@@ -89,12 +89,14 @@ class DualNet(object):
             self.B_loss = tf.reduce_mean(tf.square(self.B_12A2B - self.real_B_1)) + tf.reduce_mean(
                 tf.square(self.B_22A2B - self.real_B_2))
 
-        self.Ad_logits_fake = self.A_d_net(self.A_12B, reuseA=False, reuse1=False, name='DA1'),
-        self.Ad_logits_real = self.A_d_net(self.real_B_1, reuseA=True, reuse1=True, name='DA1')
-        self.Ad_logits_fake = self.A_d_net(self.A_22B, reuseA=True, reuse1=False, name='DA2')
-        self.Ad_logits_real = self.A_d_net(self.real_B_2, reuseA=True, reuse1=True, name='DA2')
-        self.Ad_loss_real = celoss(self.Ad_logits_real, tf.ones_like(self.Ad_logits_real))
-        self.Ad_loss_fake = celoss(self.Ad_logits_fake, tf.zeros_like(self.Ad_logits_fake))
+        self.Ad_logits_fake1 = self.A_d_net(self.A_12B, reuseA=False, reuse1=False, name='DA1'),
+        self.Ad_logits_real1 = self.A_d_net(self.real_B_1, reuseA=True, reuse1=True, name='DA1')
+        self.Ad_logits_fake2 = self.A_d_net(self.A_22B, reuseA=True, reuse1=False, name='DA2')
+        self.Ad_logits_real2 = self.A_d_net(self.real_B_2, reuseA=True, reuse1=True, name='DA2')
+        self.Ad_loss_real = 0.5*celoss(self.Ad_logits_real1, tf.ones_like(self.Ad_logits_real1)) + \
+                            0.5*celoss(self.Ad_logits_real2, tf.ones_like(self.Ad_logits_real2))
+        self.Ad_loss_fake = 0.5*celoss(self.Ad_logits_fake1, tf.zeros_like(self.Ad_logits_fake1)) + \
+                            0.5*celoss(self.Ad_logits_fake2, tf.zeros_like(self.Ad_logits_fake2))
         self.sim_loss_A_1_A_2 = 0.5 * tf.reduce_sum(tf.multiply(tf.reshape(self.real_A_1_fm - self.A_12B_fm_1, [-1]),
                                                                 tf.reshape(self.real_A_2_fm - self.A_22B_fm_1, [-1])) /
                                                     tf.multiply(tf.norm(self.real_A_1_fm - self.A_12B_fm_1, ord=2),
@@ -142,17 +144,21 @@ class DualNet(object):
                                   self.sim_loss_B_12A_B_12A2B)
 
         self.Ad_loss = self.Ad_loss_fake + self.Ad_loss_real
-        self.Ag_loss = celoss(self.Ad_logits_fake, labels=tf.ones_like(self.Ad_logits_fake)) + \
+        self.Ag_loss = 0.5*celoss(self.Ad_logits_fake1, labels=tf.ones_like(self.Ad_logits_fake1)) + \
+                       0.5*celoss(self.Ad_logits_fake2, labels=tf.ones_like(self.Ad_logits_fake2)) + \
                        self.lambda_B * (self.B_loss) + self.lambda_Sim_loss * self.sim_loss
 
-        self.Bd_logits_fake = self.B_d_net(self.B_12A, reuseA=False, reuse1=False, name='DB1')
-        self.Bd_logits_real = self.B_d_net(self.real_A_1, reuseA=True, reuse1=True, name='DB1')
-        self.Ad_logits_fake = self.B_d_net(self.B_22A, reuseA=True, reuse1=False, name='DB2')
-        self.Ad_logits_real = self.B_d_net(self.real_A_2, reuseA=True, reuse1=True, name='DB2')
-        self.Bd_loss_real = celoss(self.Bd_logits_real, tf.ones_like(self.Bd_logits_real))
-        self.Bd_loss_fake = celoss(self.Bd_logits_fake, tf.zeros_like(self.Bd_logits_fake))
+        self.Bd_logits_fake1 = self.B_d_net(self.B_12A, reuseA=False, reuse1=False, name='DB1')
+        self.Bd_logits_real1 = self.B_d_net(self.real_A_1, reuseA=True, reuse1=True, name='DB1')
+        self.Bd_logits_fake2 = self.B_d_net(self.B_22A, reuseA=True, reuse1=False, name='DB2')
+        self.Bd_logits_real2 = self.B_d_net(self.real_A_2, reuseA=True, reuse1=True, name='DB2')
+        self.Bd_loss_real = 0.5*celoss(self.Bd_logits_real1, tf.ones_like(self.Bd_logits_real1)) + \
+                            0.5*celoss(self.Bd_logits_real2, tf.ones_like(self.Bd_logits_real2))
+        self.Bd_loss_fake = 0.5*celoss(self.Bd_logits_fake1, tf.zeros_like(self.Bd_logits_fake1)) + \
+                            0.5*celoss(self.Bd_logits_fake2, tf.zeros_like(self.Bd_logits_fake2))
         self.Bd_loss = self.Bd_loss_fake + self.Bd_loss_real
-        self.Bg_loss = celoss(self.Bd_logits_fake, labels=tf.ones_like(self.Bd_logits_fake)) + \
+        self.Bg_loss = 0.5*celoss(self.Bd_logits_fake1, labels=tf.ones_like(self.Bd_logits_fake1)) + \
+                       0.5*celoss(self.Bd_logits_fake2, labels=tf.ones_like(self.Bd_logits_fake2)) +\
                        self.lambda_A * (self.A_loss) + self.lambda_Sim_loss * self.sim_loss
 
         self.d_loss = self.Ad_loss + self.Bd_loss
